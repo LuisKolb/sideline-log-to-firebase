@@ -1,0 +1,24 @@
+{
+  "name": "sideline-log-to-firebase",
+  "version": "1.0.0",
+  "description": "Firebase Function to log user activity in [sideline binder demo](https://github.com/LuisKolb/subplots-binder-demo) to Firestore for later analysis.",
+  "main": "download-notebook.js",
+  "dependencies": {
+    "firebase": "^8.2.4",
+    "firebase-admin": "^9.4.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "download": "node download-notebook.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LuisKolb/sideline-log-to-firebase.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/LuisKolb/sideline-log-to-firebase/issues"
+  },
+  "homepage": "https://github.com/LuisKolb/sideline-log-to-firebase#readme"
+}
