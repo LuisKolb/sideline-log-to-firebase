@@ -21,7 +21,18 @@ exports.addLogLine = functions.https.onRequest(async (req, res) => {
             time: admin.firestore.FieldValue.serverTimestamp(),
             action: req.body.split(",")[1],
         });
-        res.set("Access-Control-Allow-Origin", "*");
+        res.end();
+    });
+});
+
+exports.addNotebookJSON = functions.https.onRequest(async (req, res) => {
+    res.set("Access-Control-Allow-Origin", "*");
+    const userRef = db.collection("logs").doc(req.body.split(",")[0]);
+    userRef.get().then(async function (doc) {
+        if (!doc.exists) {
+            await userRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); // ensure user exists
+        }
+        await userRef.set({ nbJSON: JSON.parse(req.body.substring(req.body.indexOf(",") + 1)) }, { merge: true });
         res.end();
     });
 });
