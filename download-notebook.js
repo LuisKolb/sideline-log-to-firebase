@@ -24,22 +24,31 @@ var download_and_save = function () {
         if (!fs.existsSync(path)) {
             fs.mkdirSync(path);
         }
-        fs.writeFileSync(path + "/nb.ipynb", JSON.stringify(doc.data().nbJSON));
-        userRef
-            .collection("actions")
-            .orderBy("time", "asc")
-            .get()
-            .then(async (snapshot) => {
-                if (fs.existsSync(path + "/actions.txt")) {
-                    fs.unlinkSync(path + "/actions.txt");
+        const nbRef = userRef.collection("notebooks");
+        nbRef.get().then(async function (querySnapshot) {
+            querySnapshot.forEach((nbDoc) => {
+                nbPath = path + "/" + nbDoc.id.split(".")[0];
+                if (!fs.existsSync(nbPath)) {
+                    fs.mkdirSync(nbPath);
                 }
-                await snapshot
-                    .forEach((doc) => {
-                        var actionStr = doc.data().time.toDate().toString() + "," + doc.data().action + "\n";
-                        fs.writeFileSync(path + "/actions.txt", actionStr, { flag: "a" });
+                fs.writeFileSync(nbPath + "/nb.ipynb", JSON.stringify(nbDoc.data().nbJSON));
+                nbRef
+                    .doc(nbDoc.id)
+                    .collection("actions")
+                    .orderBy("time", "asc")
+                    .get()
+                    .then(async (snapshot) => {
+                        if (fs.existsSync(nbPath + "/actions.txt")) {
+                            fs.unlinkSync(nbPath + "/actions.txt");
+                        }
+                        await snapshot.forEach((doc) => {
+                            var actionStr = doc.data().time.toDate().toString() + "," + doc.data().action + "\n";
+                            fs.writeFileSync(nbPath + "/actions.txt", actionStr, { flag: "a" });
+                        });
+                        console.log(nbDoc.id + " ✔");
                     });
-                console.log("Done.");
             });
+        });
     });
 };
 

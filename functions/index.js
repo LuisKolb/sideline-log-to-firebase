@@ -15,13 +15,19 @@ exports.addLogLine = functions.https.onRequest(async (req, res) => {
     const userRef = db.collection("logs").doc(req.body.split(",")[0]);
     userRef.get().then(async function (doc) {
         if (!doc.exists) {
-            await userRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }); // ensure user exists
+            await userRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); // ensure user exists
         }
-        await userRef.collection("actions").add({
-            time: admin.firestore.FieldValue.serverTimestamp(),
-            action: req.body.split(",")[1],
+        const nbRef = userRef.collection("notebooks").doc(req.body.split(",")[1]);
+        nbRef.get().then(async function (nbDoc) {
+            if (!nbDoc.exists) {
+                await nbRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+            }
+            await nbRef.collection("actions").add({
+                time: admin.firestore.FieldValue.serverTimestamp(),
+                action: req.body.split(",")[2],
+            });
+            res.end();
         });
-        res.end();
     });
 });
 
@@ -32,7 +38,13 @@ exports.addNotebookJSON = functions.https.onRequest(async (req, res) => {
         if (!doc.exists) {
             await userRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); // ensure user exists
         }
-        await userRef.set({ nbJSON: JSON.parse(req.body.substring(req.body.indexOf(",") + 1)) }, { merge: true });
-        res.end();
+        const nbRef = userRef.collection("notebooks").doc(req.body.split(",")[1]);
+        nbRef.get().then(async function (nbDoc) {
+            if (!nbDoc.exists) {
+                await nbRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+            }
+            await nbRef.set({ nbJSON: JSON.parse(req.body.substring(req.body.indexOf(".ipynb") + 7)) }, { merge: true });
+            res.end();
+        });
     });
 });
