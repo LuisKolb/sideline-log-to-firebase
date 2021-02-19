@@ -31,6 +31,22 @@ exports.addLogLine = functions.https.onRequest(async (req, res) => {
     });
 });
 
+// removes strings that represent png output
+var strip_png_strings = function (nbJSON) {
+    for (c in nbJSON.cells) {
+        var cell = nbJSON.cells[c];
+        if (cell.cell_type == "code" && cell.outputs) {
+            for (o in cell.outputs) {
+                var output = cell.outputs[o];
+                if (output.data && output.data["image/png"]) {
+                    output.data["image/png"] = "";
+                }
+            }
+        }
+    }
+    return nbJSON;
+};
+
 exports.addNotebookJSON = functions.https.onRequest(async (req, res) => {
     res.set("Access-Control-Allow-Origin", "*");
     const userRef = db.collection("logs").doc(req.body.split(",")[0]);
@@ -43,7 +59,8 @@ exports.addNotebookJSON = functions.https.onRequest(async (req, res) => {
             if (!nbDoc.exists) {
                 await nbRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
             }
-            await nbRef.set({ nbJSON: JSON.parse(req.body.substring(req.body.indexOf(".ipynb") + 7)) }, { merge: true });
+            var nbJSON = JSON.parse(req.body.substring(req.body.indexOf(".ipynb") + 7));
+            await nbRef.set({ nbJSON: strip_png_strings(nbJSON) }, { merge: true });
             res.end();
         });
     });
