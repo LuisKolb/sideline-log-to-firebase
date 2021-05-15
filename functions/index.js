@@ -1,5 +1,7 @@
 const functions = require("firebase-functions");
+const cors = require("cors")({ origin: true });
 const admin = require("firebase-admin");
+
 admin.initializeApp({
     apiKey: "AIzaSyBUv2C-h8oWiYbUX1F-RvY-gqiHjdq5HWU",
     authDomain: "sideline-302116.firebaseapp.com",
@@ -10,29 +12,8 @@ admin.initializeApp({
 });
 const db = admin.firestore();
 
-exports.addLogLine = functions.https.onRequest(async (req, res) => {
-    res.set("Access-Control-Allow-Origin", "*");
-    const userRef = db.collection("logs").doc(req.body.split(",")[0]);
-    userRef.get().then(async function (doc) {
-        if (!doc.exists) {
-            await userRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); // ensure user exists
-        }
-        const nbRef = userRef.collection("notebooks").doc(req.body.split(",")[1]);
-        nbRef.get().then(async function (nbDoc) {
-            if (!nbDoc.exists) {
-                await nbRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-            }
-            await nbRef.collection("actions").add({
-                time: admin.firestore.FieldValue.serverTimestamp(),
-                action: req.body.split(",")[2],
-            });
-            res.end();
-        });
-    });
-});
-
 // removes strings that represent png output
-var strip_png_strings = function (nbJSON) {
+const strip_png_strings = function (nbJSON) {
     for (c in nbJSON.cells) {
         var cell = nbJSON.cells[c];
         if (cell.cell_type == "code" && cell.outputs) {
@@ -47,21 +28,44 @@ var strip_png_strings = function (nbJSON) {
     return nbJSON;
 };
 
-exports.addNotebookJSON = functions.https.onRequest(async (req, res) => {
-    res.set("Access-Control-Allow-Origin", "*");
-    const userRef = db.collection("logs").doc(req.body.split(",")[0]);
-    userRef.get().then(async function (doc) {
-        if (!doc.exists) {
-            await userRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); // ensure user exists
-        }
-        const nbRef = userRef.collection("notebooks").doc(req.body.split(",")[1]);
-        nbRef.get().then(async function (nbDoc) {
-            if (!nbDoc.exists) {
-                await nbRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+exports.addLogLine = functions.https.onRequest(async (req, res) => {
+    cors(req, res, () => {
+        const userRef = db.collection("logs").doc(req.body.split(",")[0]);
+        userRef.get().then(async function (doc) {
+            if (!doc.exists) {
+                await userRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); // ensure user exists
             }
-            var nbJSON = JSON.parse(req.body.substring(req.body.indexOf(".ipynb") + 7));
-            await nbRef.set({ nbJSON: strip_png_strings(nbJSON) }, { merge: true });
-            res.end();
+            const nbRef = userRef.collection("notebooks").doc(req.body.split(",")[1]);
+            nbRef.get().then(async function (nbDoc) {
+                if (!nbDoc.exists) {
+                    await nbRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+                }
+                await nbRef.collection("actions").add({
+                    time: admin.firestore.FieldValue.serverTimestamp(),
+                    action: req.body.split(",")[2],
+                });
+                res.end();
+            });
+        });
+    });
+});
+
+exports.addNotebookJSON = functions.https.onRequest(async (req, res) => {
+    cors(req, res, () => {
+        const userRef = db.collection("logs").doc(req.body.split(",")[0]);
+        userRef.get().then(async function (doc) {
+            if (!doc.exists) {
+                await userRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); // ensure user exists
+            }
+            const nbRef = userRef.collection("notebooks").doc(req.body.split(",")[1]);
+            nbRef.get().then(async function (nbDoc) {
+                if (!nbDoc.exists) {
+                    await nbRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+                }
+                var nbJSON = JSON.parse(req.body.substring(req.body.indexOf(".ipynb") + 7));
+                await nbRef.set({ nbJSON: strip_png_strings(nbJSON) }, { merge: true });
+                res.end();
+            });
         });
     });
 });
