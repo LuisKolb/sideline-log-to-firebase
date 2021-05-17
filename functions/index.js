@@ -12,8 +12,12 @@ admin.initializeApp({
 });
 const db = admin.firestore();
 
-// removes strings that represent png output
+
+// removes strings that represent png output to reduce file size
 const strip_png_strings = function (nbJSON) {
+    //console.log("complete string size:" + (new TextEncoder().encode(nbJSON)).length);
+
+    nbJSON = JSON.parse(nbJSON)
     for (c in nbJSON.cells) {
         var cell = nbJSON.cells[c];
         if (cell.cell_type == "code" && cell.outputs) {
@@ -25,6 +29,9 @@ const strip_png_strings = function (nbJSON) {
             }
         }
     }
+    nbJSON = JSON.stringify(nbJSON)
+
+    //console.log("stripped string size:" + (new TextEncoder().encode(nbJSON)).length);
     return nbJSON;
 };
 
@@ -52,17 +59,25 @@ exports.addLogLine = functions.https.onRequest(async (req, res) => {
 
 exports.addNotebookJSON = functions.https.onRequest(async (req, res) => {
     cors(req, res, () => {
-        const userRef = db.collection("logs").doc(req.body.split(",")[0]);
+        var body = req.body;
+        var userName = body.slice(0,body.indexOf(","));
+        body = body.slice(body.indexOf(",")+1);
+
+        var nbName = body.slice(0,body.indexOf(","));
+        body = body.slice(body.indexOf(",")+1);
+
+        var nbJSON = body;
+
+        const userRef = db.collection("logs").doc(userName);
         userRef.get().then(async function (doc) {
             if (!doc.exists) {
                 await userRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true }); // ensure user exists
             }
-            const nbRef = userRef.collection("notebooks").doc(req.body.split(",")[1]);
+            const nbRef = userRef.collection("notebooks").doc(nbName);
             nbRef.get().then(async function (nbDoc) {
                 if (!nbDoc.exists) {
                     await nbRef.set({ createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
                 }
-                var nbJSON = JSON.parse(req.body.substring(req.body.indexOf(".ipynb") + 7));
                 await nbRef.set({ nbJSON: strip_png_strings(nbJSON) }, { merge: true });
                 res.end();
             });
